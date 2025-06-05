@@ -47,6 +47,12 @@ export const CONFIG = {
         enabled: process.env.LOGIN_ENABLED !== 'false',
     },
 
+    /** Configuration relating to databases */
+    database: {
+        /** URL for the MongoDB database */
+        mongoUrl: process.env.MONGO_URL,
+    },
+
     /** Environment mode */
     nodeEnv: process.env.NODE_ENV || 'development',
 } as const;
