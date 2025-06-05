@@ -19,7 +19,7 @@ app.get("/", (req, res) => {
 });
 
 // Initialize Function
-const loader = new Initializer("SERVER", async () => {
+new Initializer("SERVER", async () => {
     // Init Routes
     await import("./route_registry");
 

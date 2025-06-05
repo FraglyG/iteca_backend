@@ -31,6 +31,22 @@ export const CONFIG = {
         base: process.env.BASE_DOMAIN || 'localhost',
     },
 
+    /** Configuration relating to the sign-up process */
+    signUp: {
+        /** Whether sign-up is enabled (Default: true) */
+        enabled: process.env.SIGN_UP_ENABLED !== 'false',
+        /** Whether email is required for sign-up (Default: true) */
+        requireEmail: process.env.SIGNUP_REQUIRE_EMAIL !== 'false',
+        /** Whether email verification is required for sign-up (Default: true) */
+        requireEmailVerification: process.env.SIGNUP_REQUIRE_EMAIL_VERIFICATION !== 'false',
+    },
+
+    /** Configuration relating to the login process */
+    login: {
+        /** Whether login is enabled (Default: true) */
+        enabled: process.env.LOGIN_ENABLED !== 'false',
+    },
+
     /** Environment mode */
     nodeEnv: process.env.NODE_ENV || 'development',
 } as const;
