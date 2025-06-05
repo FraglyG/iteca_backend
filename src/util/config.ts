@@ -1,8 +1,6 @@
 import { getLogger } from './logger';
 import { stime } from './static';
 
-const logger = getLogger("CONFIG");
-
 export const CONFIG = {
     /** Server configuration */
     server: {
@@ -67,12 +65,12 @@ const required = [
 
 // JWT security recommendations
 if (CONFIG.jwt.secret == "secret" || CONFIG.jwt.refreshSecret == "refresh_secret") {
-    logger.warn("Using default JWT secrets. Please set JWT_SECRET and JWT_REFRESH_SECRET environment variables for production use.");
+    console.warn("Using default JWT secrets. Please set JWT_SECRET and JWT_REFRESH_SECRET environment variables for production use.");
 }
 
 // Assumed okay for development mode
 if (CONFIG.nodeEnv === "production" && CONFIG.domain.base === "localhost") {
-    logger.debug("Heads up! Running in production mode with BASE_DOMAIN set to 'localhost', consider changing this for production.");
+    console.warn("Heads up! Running in production mode with BASE_DOMAIN set to 'localhost', consider changing this for production.");
 }
 
 // Validate Required Variables
@@ -81,7 +79,6 @@ function checkRequiredEnv() {
     for (const key of required) if (!key) errors.push(`Missing required environment variable: ${key}`);
 
     if (errors.length > 0) throw new Error("Configuration validation failed. The following required environment variables are missing:\n- " + errors.join("\n- "));
-    else logger.debug("All required environment variables are set.");
 }
 checkRequiredEnv();
 

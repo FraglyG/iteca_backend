@@ -1,9 +1,9 @@
 import { CookieOptions, Response } from 'express';
 import jwt from 'jsonwebtoken';
-import { RefreshToken, UserInterface } from '../mongoose';
+import { RefreshToken, UserInterface } from '../../mongoose';
 import cron from "node-schedule";
-import { getLogger } from '../util/logger';
-import CONFIG from '../util/config';
+import { getLogger } from '../../util/logger';
+import CONFIG from '../../util/config';
 
 const logger = getLogger('JWT');
 
@@ -194,7 +194,7 @@ class JWTService {
      */
     private async isTokenRevoked(token: string): Promise<boolean> {
         const tokenDoc = await RefreshToken.findOne({ token });
-        return !tokenDoc || tokenDoc.isRevoked;
+        return (!tokenDoc || tokenDoc.isRevoked) ?? false;
     }
 
     /**
