@@ -26,9 +26,9 @@ export type RouteAuthConfig = RouteAuthConfigJWT;
 
 // HELPERS
 
-function validateWithZodSchema(body: any, schema: RouteValidationSchema): { success: boolean; data?: any; errors?: string[] } {
+function validateWithZodSchema(data: any, schema: RouteValidationSchema): { success: boolean; data?: any; errors?: string[] } {
     try {
-        const validatedData = schema.parse(body);
+        const validatedData = schema.parse(data);
         return { success: true, data: validatedData };
     } catch (error) {
         if (error instanceof ZodError) {
@@ -51,6 +51,7 @@ export class Route {
 
     private schemas = {
         body: null as RouteValidationSchema | null,
+        query: null as RouteValidationSchema | null,
     }
 
     // TODO: honestly idk if this dual constructor is necessary, in the future see which one you prefer and remove the other
@@ -111,6 +112,12 @@ export class Route {
         return this;
     }
 
+    /** Add a schema to automatically check the input of the query */
+    public expectQuery(schema: RouteValidationSchema) {
+        this.schemas.query = schema;
+        return this;
+    }
+
     /** Handler for when this route is called */
     public onCall(handler: (req: Request, res: Response) => void) {
         const [method, path] = this.route.split(":");
@@ -124,22 +131,37 @@ export class Route {
         app[method.toLowerCase() as keyof typeof app](path, this.middleware, (req: Request, res: Response) => {
             logger.debug(`Route called: ${this.method} on ${this.path}`);
 
-            // Validate request body 
-            if (this.schemas.body) {
-                const validation = validateWithZodSchema(req.body, this.schemas.body);
+            // Validate request data
+            const validateRequestData = (data: any, schema: RouteValidationSchema | null, type: 'body' | 'query') => {
+                if (!schema) return true;
+
+                const validation = validateWithZodSchema(data, schema);
                 if (!validation.success) {
-                    logger.warn(`Request body validation failed for route ${this.route}`);
+                    logger.warn(`Request ${type} validation failed for route ${this.route}`);
                     res.status(400).json({
                         success: false,
                         error: "Bad Request",
-                        message: "Request body validation failed.",
+                        message: `Request ${type} validation failed.`,
                         validationErrors: validation.errors || [],
                     });
-                    return;
+                    return false;
                 }
-                // Replace req.body with validated data
-                req.body = validation.data;
-            }
+
+                // Replace data with validated data
+                if (type === "body") req.body = validation.data;
+                else if (type === "query") req.query = validation.data;
+                else {
+                    logger.error(`Invalid validation type: ${type}`);
+                    res.status(500).json({ success: false, error: "Internal Server Error", message: "Invalid validation type." });
+                    return false;
+                }
+
+                return true;
+            };
+
+            // Validate body and query
+            if (!validateRequestData(req.body, this.schemas.body, 'body')) return;
+            if (!validateRequestData(req.query, this.schemas.query, 'query')) return;
 
             // Forward
             handler(req as Request, res);

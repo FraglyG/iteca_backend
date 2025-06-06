@@ -32,6 +32,12 @@ export interface UserInterface {
         /** When the email verification expires */
         expiresAt: Date;
     },
+
+    /** Information relating to the user's profile */
+    profile?: {
+        /** User's bio */
+        bio?: string;
+    }
 }
 
 // SCHEMA
@@ -52,6 +58,10 @@ const userSchema = new Schema<UserInterface>({
         sentDate: { type: Date },
         expiresAt: { type: Date },
     },
+
+    profile: {
+        bio: { type: String },
+    }
 }, { timestamps: true })
 
 // INDEXES

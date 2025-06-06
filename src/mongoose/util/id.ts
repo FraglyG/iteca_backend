@@ -1,9 +1,11 @@
 import * as crypto from 'crypto'
 
-export type KeyType = "user"
+export type KeyType = "user" | "channel" | "message"
 
 const prefixForKeyType: Record<KeyType, string> = {
     "user": "us",
+    "channel": "ch",
+    "message": "msg"
 }
 
 const seperator = "-"
