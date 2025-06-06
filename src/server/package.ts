@@ -93,8 +93,7 @@ export class Route {
                 const user = await userModel.findOne({ userId: req.user.userId });
                 if (!user) {
                     logger.warn(`User not found for userId: ${req.user.userId}`);
-                    res.status(404).json({ success: false, error: "Not Found", message: "User not found." });
-                    return;
+                    return res.status(404).json({ success: false, error: "Not Found", message: "User not found." });
                 }
 
                 req.user = user.toObject(); // Convert Mongoose document to plain object

@@ -10,6 +10,8 @@ export interface UserInterface {
     /** User's hashed password */
     passwordHash: string;
 
+    /** User's profile picture */
+    profilePicture?: string;
     /** User's first name */
     firstName: string;
     /** User's last name */
@@ -38,11 +40,10 @@ const userSchema = new Schema<UserInterface>({
     username: { type: String },
     passwordHash: { type: String, required: true },
 
-
+    profilePicture: { type: String },
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },
     primaryEmail: { type: String },
-
 
     emailVerified: { type: Boolean, default: false },
     emailVerification: {
