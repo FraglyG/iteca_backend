@@ -36,6 +36,8 @@ export interface UserInterface {
 const userSchema = new Schema<UserInterface>({
     userId: { type: String, default: () => getKey("user") },
     username: { type: String },
+    passwordHash: { type: String, required: true },
+
 
     firstName: { type: String, required: true },
     lastName: { type: String, required: true },

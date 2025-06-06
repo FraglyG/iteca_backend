@@ -1,9 +1,10 @@
 import { userModel } from "../../../mongoose";
 import CONFIG from "../../../util/config";
 import { getLogger } from "../../../util/logger";
-import { Route, RouteValidationSchema } from "../../package";
+import { Route } from "../../package";
 import bcrypt from "bcrypt";
 import { jwtService } from "../../auth/jwt";
+import { z } from "zod";
 
 const logger = getLogger("ROUTE.LOGIN");
 
@@ -19,13 +20,15 @@ function isEmail(input: string): boolean {
 
 // LOGIN ROUTE
 
-const loginBodySchema: RouteValidationSchema = {
-    identifier: String, // Can be either username or email
-    password: String,
-}
+const loginBodySchema = z.object({
+    identifier: z.string()
+        .min(1, "Username or email is required"), // Can be either username or email
+    password: z.string()
+        .min(1, "Password is required"),
+});
 
 new Route("POST:/api/authv1/login").expectBody(loginBodySchema).onCall(async (req, res) => {
-    const { identifier, password } = req.body;
+    const { identifier, password } = req.body as z.infer<typeof loginBodySchema>;
 
     // Check if login is enabled
     if (!CONFIG.login?.enabled) {
@@ -62,7 +65,8 @@ new Route("POST:/api/authv1/login").expectBody(loginBodySchema).onCall(async (re
         }
 
         // Generate JWT tokens
-        await jwtService.generateTokens({ userId: user.userId });
+        const tokens = await jwtService.generateTokens({ userId: user.userId });
+        await jwtService.setCookies(res, tokens.accessToken, tokens.refreshToken);
 
         // Logging
         logger.success(`User logged in: ${user.userId} (${user.primaryEmail})`, {

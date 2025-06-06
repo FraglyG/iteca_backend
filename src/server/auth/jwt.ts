@@ -244,6 +244,18 @@ class JWTService {
     }
 
     /**
+     * Sets the access and refresh tokens as cookies in the response
+     * @param res Express response object
+     * @param accessToken The access token to set
+     * @param refreshToken The refresh token to set
+     */
+    async setCookies(res: Response, accessToken: string, refreshToken: string): Promise<void> {
+        res.cookie("accessToken", accessToken, tokenCookieOptions.accessToken);
+        res.cookie("refreshToken", refreshToken, tokenCookieOptions.refreshToken);
+        logger.debug('Cookies set successfully');
+    }
+
+    /**
      * Verifies and refreshes tokens if needed, updating cookies automatically
      * @param cookies Current token cookies from request
      * @param res Express response object for updating cookies

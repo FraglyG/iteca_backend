@@ -5,6 +5,11 @@ import { getLogger } from "../../util/logger";
 const logger = getLogger("ROUTE.AUTH")
 
 export async function validateJWTRequest(req: Request, res: Response): Promise<boolean> {
+    if (!req.cookies) {
+        logger.warn(`No cookies passed for JWT validation from IP: ${req.ip}`);
+        return false;
+    }
+
     const cookies = {
         accessToken: req.cookies.accessToken,
         refreshToken: req.cookies.refreshToken

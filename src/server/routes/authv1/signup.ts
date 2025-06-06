@@ -1,11 +1,12 @@
 import { UserInterface, userModel } from "../../../mongoose";
 import CONFIG from "../../../util/config";
 import { getLogger } from "../../../util/logger";
-import { Route, RouteValidationSchema } from "../../package";
+import { Route } from "../../package";
 import crypto from "crypto";
 import bcrypt from "bcrypt";
 import { stime } from "../../../util/static";
 import { jwtService } from "../../auth/jwt";
+import { z } from "zod";
 
 const logger = getLogger("ROUTE.SIGNUP");
 
@@ -30,80 +31,35 @@ async function generatePasswordHash(password: string) {
     return hash;
 }
 
-function inputValidation(input: { username: string, firstName: string, lastName: string, password: string, email?: string }) {
-    const { username, firstName, lastName, password, email } = input;
-
-    function isAlphanumericUnderscore(str: string): boolean {
-        return /^[a-zA-Z0-9_]+$/.test(str);
-    }
-
-    function isValidLength(str: string, min: number, max: number): boolean {
-        return str.length >= min && str.length <= max;
-    }
-
-    if (!username || !firstName || !lastName || !password) {
-        return { success: false, error: "Missing Required Fields", message: "Username, first name, last name, and password are required." };
-    }
-
-    // EMAIL
-    if (email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-        return { success: false, error: "Invalid Email Format", message: "The provided email address is not valid." };
-    }
-
-    // USERNAME
-    if (!isAlphanumericUnderscore(username)) {
-        return { success: false, error: "Invalid Username Characters", message: "Username can only contain alphanumeric characters and underscores." };
-    }
-    if (isValidLength(username, 3, 20)) {
-        return { success: false, error: "Invalid Username Length", message: "Username must be between 3 and 20 characters long." };
-    }
-
-    // FIRSTNAME
-    if (!isAlphanumericUnderscore(firstName)) {
-        return { success: false, error: "Invalid First Name Characters", message: "First name can only contain alphanumeric characters and underscores." };
-    }
-    if (isValidLength(firstName, 1, 50)) {
-        return { success: false, error: "Invalid First Name Length", message: "First name must be between 1 and 50 characters long." };
-    }
-
-    // LASTNAME
-    if (!isAlphanumericUnderscore(lastName)) {
-        return { success: false, error: "Invalid Last Name Characters", message: "Last name can only contain alphanumeric characters and underscores." };
-    }
-    if (isValidLength(lastName, 1, 50)) {
-        return { success: false, error: "Invalid Last Name Length", message: "Last name must be between 1 and 50 characters long." };
-    }
-
-    // PASSWORD
-    if (!isValidLength(password, 5, 50)) {
-        return { success: false, error: "Invalid Password Length", message: "Password must be between 5 and 50 characters long." };
-    }
-
-    return { success: true };
-}
-
 // SIGNUP ROUTE
 
-const signupBodySchema: RouteValidationSchema = {
-    username: String,
-    firstName: String,
-    lastName: String,
-    password: String,
-    email: String || undefined,
-}
+const signupBodySchema = z.object({
+    username: z.string()
+        .min(3, "Username must be at least 3 characters long")
+        .max(20, "Username must be at most 20 characters long")
+        .regex(/^[a-zA-Z0-9_]+$/, "Username can only contain alphanumeric characters and underscores"),
+    firstName: z.string()
+        .min(1, "First name is required")
+        .max(50, "First name must be at most 50 characters long")
+        .regex(/^[a-zA-Z0-9_]+$/, "First name can only contain alphanumeric characters and underscores"),
+    lastName: z.string()
+        .min(1, "Last name is required")
+        .max(50, "Last name must be at most 50 characters long")
+        .regex(/^[a-zA-Z0-9_]+$/, "Last name can only contain alphanumeric characters and underscores"),
+    password: z.string()
+        .min(5, "Password must be at least 5 characters long")
+        .max(50, "Password must be at most 50 characters long"),
+    email: z.string()
+        .email("Invalid email format")
+        .optional()
+});
 
 new Route("POST:/api/authv1/signup").expectBody(signupBodySchema).onCall(async (req, res) => {
-    const { username, firstName, lastName, password, email } = req.body;
+    const { username, firstName, lastName, password, email } = req.body as z.infer<typeof signupBodySchema>;
 
     // Check if sign-up is enabled
     if (!CONFIG.signUp.enabled) {
         return res.status(403).json({ success: false, error: "Sign-Up Disabled", message: "Sign-up is currently disabled on this server." });
-    }
-
-    // Validate input
-    const validation = inputValidation({ username, firstName, lastName, password, email });
-    if (!validation.success) {
-        return res.status(400).json({ success: false, error: validation.error, message: validation.message });
     }
 
     // Check if email is required
@@ -136,16 +92,13 @@ new Route("POST:/api/authv1/signup").expectBody(signupBodySchema).onCall(async (
 
         // Create user
         const user = await userModel.create({
-            firstName,
-            lastName,
-            primaryEmail: email,
-            emailVerification,
-            emailVerified: false,
-            passwordHash,
+            username, firstName, lastName, passwordHash, emailVerification,
+            primaryEmail: email, emailVerified: false,
         });
 
         // Create JWT tokens
-        await jwtService.generateTokens({ userId: user.userId, });
+        // Commented out cause we'll handle this in the login route to force users to log in after sign-up
+        // await jwtService.generateTokens({ userId: user.userId, });
 
         // Logging
         logger.success(`New user created: ${user.userId} (${user.primaryEmail})`, { firstName, lastName, email, emailVerification });

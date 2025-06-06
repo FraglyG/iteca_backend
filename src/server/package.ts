@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { getLogger } from "../util/logger";
 import { app } from "./server";
 import { validateJWTRequest } from "./auth/util";
+import { userModel } from "../mongoose";
+import { z, ZodSchema, ZodError } from "zod";
 
 // INIT
 const logger = getLogger("ROUTE.PACK");
@@ -10,28 +12,33 @@ const ROUTES = new Map<RouteCompositionId, Route>();
 // TYPES
 export type RouteMethods = "GET" | "POST" | "PUT" | "DELETE" | "PATCH" | "HEAD" | "OPTIONS";
 export type RouteCompositionId = `${RouteMethods}:${string}`;
-export type RouteValidationSchema = Record<string, any>;
+export type RouteValidationSchema = ZodSchema<any>;
+
+type RouteAuthConfigJWT = {
+    type: "JWT";
+    config?: {
+        /** Whether to return the full user in req.user, otherwise will just return tokenized payload */
+        getFullUser?: boolean;
+    }
+}
+
+export type RouteAuthConfig = RouteAuthConfigJWT;
 
 // HELPERS
 
-function compareToSchema(body: Record<string, any>, schema: RouteValidationSchema): boolean {
-    if (!body || typeof body !== 'object') {
-        logger.debug("(SCHEMA) Invalid body passed for schema validation");
-        return false;
-    }
-
-    // Simple schema validation logic
-    for (const key in schema) {
-        if (!(key in body)) {
-            logger.debug(`(SCHEMA) Missing key in body: ${key}`);
-            return false;
+function validateWithZodSchema(body: any, schema: RouteValidationSchema): { success: boolean; data?: any; errors?: string[] } {
+    try {
+        const validatedData = schema.parse(body);
+        return { success: true, data: validatedData };
+    } catch (error) {
+        if (error instanceof ZodError) {
+            const errorMessages = error.errors.map(err => `${err.path.join('.')}: ${err.message}`);
+            logger.debug(`(SCHEMA) Validation failed: ${errorMessages.join(", ")}`);
+            return { success: false, errors: errorMessages };
         }
-        if (typeof body[key] !== schema[key]) {
-            logger.debug(`(SCHEMA) Type mismatch for key ${key}: expected ${schema[key]}, got ${typeof body[key]}`);
-            return false;
-        }
+        logger.debug("(SCHEMA) Unknown validation error");
+        return { success: false, errors: ["Unknown validation error"] };
     }
-    return true;
 }
 
 // CLASSES
@@ -43,7 +50,7 @@ export class Route {
     private middleware: ((req: Request, res: Response, next: () => void) => void)[] = [];
 
     private schemas = {
-        body: null as Record<string, any> | null,
+        body: null as RouteValidationSchema | null,
     }
 
     // TODO: honestly idk if this dual constructor is necessary, in the future see which one you prefer and remove the other
@@ -73,13 +80,28 @@ export class Route {
     }
 
     /** Require authentication for this endpoint */
-    auth(type: "JWT") {
+    auth({ type, config }: RouteAuthConfig) {
         if (type !== "JWT") throw new Error(`[ROUTE.PACK] Unsupported authentication type: ${type}`);
         logger.debug(`Authentication required for route ${this.route}`);
 
         this.middleware.push(async (req, res, next) => {
             const validated = await validateJWTRequest(req, res);
-            if (validated) return next();
+            if (!validated) return res.status(401).json({ success: false, error: "Unauthorized", message: "Invalid or missing authentication." });
+
+            // If config is provided, handle it
+            if (config?.getFullUser) {
+                const user = await userModel.findOne({ userId: req.user.userId });
+                if (!user) {
+                    logger.warn(`User not found for userId: ${req.user.userId}`);
+                    res.status(404).json({ success: false, error: "Not Found", message: "User not found." });
+                    return;
+                }
+
+                req.user = user.toObject(); // Convert Mongoose document to plain object
+                logger.debug(`Full user data attached to request for userId: ${req.user.userId}`);
+            }
+
+            return next();
         });
         return this;
     }
@@ -104,10 +126,20 @@ export class Route {
             logger.debug(`Route called: ${this.method} on ${this.path}`);
 
             // Validate request body 
-            if (this.schemas.body && !compareToSchema(req.body, this.schemas.body)) {
-                logger.warn(`Request body does not match schema for route ${this.route}`);
-                res.status(400).json({ success: false, error: "Bad Request", message: "Request body does not match expected schema." });
-                return;
+            if (this.schemas.body) {
+                const validation = validateWithZodSchema(req.body, this.schemas.body);
+                if (!validation.success) {
+                    logger.warn(`Request body validation failed for route ${this.route}`);
+                    res.status(400).json({
+                        success: false,
+                        error: "Bad Request",
+                        message: "Request body validation failed.",
+                        validationErrors: validation.errors || [],
+                    });
+                    return;
+                }
+                // Replace req.body with validated data
+                req.body = validation.data;
             }
 
             // Forward
