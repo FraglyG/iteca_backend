@@ -92,8 +92,9 @@ new Route("POST:/api/authv1/signup").expectBody(signupBodySchema).onCall(async (
 
         // Create user
         const user = await userModel.create({
-            username, firstName, lastName, passwordHash, emailVerification,
+            username, passwordHash, emailVerification,
             primaryEmail: email, emailVerified: false,
+            profile: { firstName, lastName }
         });
 
         // Create JWT tokens

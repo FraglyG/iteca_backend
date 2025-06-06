@@ -9,13 +9,6 @@ export interface UserInterface {
     username: string;
     /** User's hashed password */
     passwordHash: string;
-
-    /** User's profile picture */
-    profilePicture?: string;
-    /** User's first name */
-    firstName: string;
-    /** User's last name */
-    lastName: string;
     /** User's primary configured email, may not be configured depending on server-configuration */
     primaryEmail?: string;
 
@@ -34,9 +27,15 @@ export interface UserInterface {
     },
 
     /** Information relating to the user's profile */
-    profile?: {
+    profile: {
         /** User's bio */
         bio?: string;
+        /** User's profile picture */
+        profilePicture?: string;
+        /** User's first name */
+        firstName: string;
+        /** User's last name */
+        lastName: string;
     }
 }
 
@@ -46,9 +45,6 @@ const userSchema = new Schema<UserInterface>({
     username: { type: String },
     passwordHash: { type: String, required: true },
 
-    profilePicture: { type: String },
-    firstName: { type: String, required: true },
-    lastName: { type: String, required: true },
     primaryEmail: { type: String },
 
     emailVerified: { type: Boolean, default: false },
@@ -60,7 +56,13 @@ const userSchema = new Schema<UserInterface>({
     },
 
     profile: {
-        bio: { type: String },
+        type: {
+            bio: { type: String },
+            profilePicture: { type: String },
+            firstName: { type: String, required: true },
+            lastName: { type: String, required: true },
+        },
+        default: {}
     }
 }, { timestamps: true })
 
