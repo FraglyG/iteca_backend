@@ -7,6 +7,9 @@ import "./routes/authv1/signup";
 import "./routes/user/getUser";
 import "./routes/user/updateUser";
 
+import "./routes/user/getListing";
+import "./routes/user/setListing";
+
 // Messanger routes
 import "./routes/messanger/fetchMessages";
 import "./routes/messanger/sendMessage";
