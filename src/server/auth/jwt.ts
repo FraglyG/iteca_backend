@@ -11,7 +11,7 @@ const logger = getLogger('JWT');
 const baseCookieOptions: CookieOptions = {
     httpOnly: true,
     secure: CONFIG.nodeEnv === 'production',
-    sameSite: 'none', // 'lax',
+    sameSite: 'lax',
     domain: `.${CONFIG.domain.base}`,
 };
 
