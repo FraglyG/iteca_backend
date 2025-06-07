@@ -147,9 +147,8 @@ export class Route {
                     return false;
                 }
 
-                // Replace data with validated data
-                if (type === "body") req.body = validation.data;
-                else if (type === "query") req.query = validation.data;
+                // Replace data with validated data (just overwrite body in both cases cause query is readonly)
+                if (type === "body" || type === "query") req.body = validation.data;
                 else {
                     logger.error(`Invalid validation type: ${type}`);
                     res.status(500).json({ success: false, error: "Internal Server Error", message: "Invalid validation type." });
