@@ -8,10 +8,6 @@ import CONFIG from "../../../util/config";
 
 const logger = getLogger("ROUTE.GET_USER");
 
-new Route("GET:/api/user/from/jwt").auth({ type: "JWT", config: { getFullUser: true } }).onCall(async (req, res) => {
-    res.json(req.user);
-});
-
 const userFromJwtRawSchema = z.object({
     code: z.string().min(1, "Verification code is required"),
 });

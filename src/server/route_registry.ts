@@ -20,3 +20,4 @@ import "./routes/listing/getListings";
 import "./routes/messanger/fetchMessages";
 import "./routes/messanger/sendMessage";
 import "./routes/messanger/fetchChannels";
+import "./routes/messanger/createChannel";

@@ -33,3 +33,23 @@ new Route("GET:/api/user/from/jwt/raw").expectQuery(userFromJwtRawSchema).onCall
 
     res.json({ success: true, tokenPayload: payload, user: user.toObject() });
 });
+
+const userFromIdSchema = z.object({
+    userId: z.string().min(1, "User ID is required").max(50, "User ID cannot exceed 50 characters"),
+});
+
+new Route("GET:/api/public/user").expectQuery(userFromIdSchema).onCall(async (req, res) => {
+    const { userId } = req.query as z.infer<typeof userFromIdSchema>;
+    if (!userId) return res.status(400).json({ success: false, error: "Bad Request", message: "User ID is required." });
+
+    // Find user
+    const user = await userModel.findOne({ userId }, {
+        "passwordHash": 0,
+        "primaryEmail": 0,
+        "emailVerification": 0,
+    }).lean();
+    if (!user) return res.status(404).json({ success: false, error: "Not Found", message: "User not found." });
+
+    // Return user data
+    res.json({ success: true, user });
+});

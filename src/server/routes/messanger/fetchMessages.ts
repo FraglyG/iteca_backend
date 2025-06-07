@@ -2,21 +2,22 @@ import { z } from "zod";
 import { UserInterface } from "../../../mongoose";
 import channelModel from "../../../mongoose/models/channel";
 import messageModel from "../../../mongoose/models/message";
+import userModel from "../../../mongoose/models/user";
 import { Route } from "../../package";
 
 const messageQuerySchema = z.object({
-    limit: z.number()
+    limit: z.coerce.number()
         .min(1, "Limit must be at least 1")
         .max(100, "Limit must be at most 100")
         .default(20),
+    channelId: z.string()
+        .min(1, "Channel ID is required")
+        .max(50, "Channel ID cannot exceed 50 characters"),
 });
 
-new Route("GET:/api/message/:channelId/messages").auth({ type: "JWT", config: { getFullUser: true } }).expectQuery(messageQuerySchema).onCall(async (req, res) => {
+new Route("GET:/api/message/messages").auth({ type: "JWT", config: { getFullUser: true } }).expectQuery(messageQuerySchema).onCall(async (req, res) => {
     const user = req.user as UserInterface;
-    const { limit } = req.body as z.infer<typeof messageQuerySchema>;
-
-    const channelId = req.params.channelId;
-    if (!channelId) return res.status(400).json({ success: false, error: "Invalid Request", message: "Channel ID is required." });
+    const { limit, channelId } = req.body as z.infer<typeof messageQuerySchema>;
 
     // Find Channel
     const channel = await channelModel.findOne({ channelId, ownerUserIds: user.userId });

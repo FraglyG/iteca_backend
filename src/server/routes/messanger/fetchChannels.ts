@@ -5,7 +5,7 @@ import messageModel from "../../../mongoose/models/message";
 import { Route } from "../../package";
 
 const channelQuerySchema = z.object({
-    limit: z.number()
+    limit: z.coerce.number()
         .min(1, "Limit must be at least 1")
         .max(100, "Limit must be at most 100")
         .default(20),
