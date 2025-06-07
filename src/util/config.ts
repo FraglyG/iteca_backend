@@ -27,6 +27,10 @@ export const CONFIG = {
     domain: {
         /** Base domain for cookie settings */
         base: process.env.BASE_DOMAIN || 'localhost',
+        /** Backend URI (this server's URI) */
+        backendUri: process.env.BACKEND_URI || `http://${process.env.BASE_DOMAIN || 'localhost'}:${process.env.PORT || 3000}`,
+        /** Frontend URI */
+        frontendUri: process.env.FRONTEND_URI || `https://example.com`,
     },
 
     /** Configuration relating to the sign-up process */
@@ -37,6 +41,24 @@ export const CONFIG = {
         requireEmail: process.env.SIGNUP_REQUIRE_EMAIL !== 'false',
         /** Whether email verification is required for sign-up (Default: true) */
         requireEmailVerification: process.env.SIGNUP_REQUIRE_EMAIL_VERIFICATION !== 'false',
+    },
+
+    /** Configuration in regards to emails */
+    mail: {
+        /** Whether email sending is enabled (Default: true) */
+        enabled: process.env.EMAIL_ENABLED !== 'false',
+        /** Email address used for sending masked emails */
+        from: process.env.EMAIL_FROM,
+        /** SMTP host for sending emails */
+        smtpHost: process.env.SMTP_HOST || 'smtp.gmail.com',
+        /** SMTP port for sending emails */
+        smtpPort: Number(process.env.SMTP_PORT) || 465,
+        /** SMTP secure connection (Default: true) */
+        smtpSecure: process.env.SMTP_SECURE !== 'false',
+        /** SMTP user for authentication */
+        smtpUser: process.env.SMTP_USER,
+        /** SMTP password for authentication */
+        smtpPassword: process.env.SMTP_PASSWORD,
     },
 
     /** Configuration relating to the login process */

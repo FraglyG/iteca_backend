@@ -7,6 +7,7 @@ import bcrypt from "bcrypt";
 import { stime } from "../../../util/static";
 import { jwtService } from "../../auth/jwt";
 import { z } from "zod";
+import { sendEmail } from "../../../util/mailer";
 
 const logger = getLogger("ROUTE.SIGNUP");
 
@@ -97,9 +98,38 @@ new Route("POST:/api/authv1/signup").expectBody(signupBodySchema).onCall(async (
             profile: { firstName, lastName }
         });
 
-        // Create JWT tokens
-        // Commented out cause we'll handle this in the login route to force users to log in after sign-up
-        // await jwtService.generateTokens({ userId: user.userId, });
+        // Send Email Verification
+        if (CONFIG.signUp.requireEmailVerification && emailVerification && email) {
+            const verificationLink = `${CONFIG.domain.backendUri}/verify/email?code=${emailVerification.verificationCode}`;
+            const emailContent = `
+                <h1>GigTree Email Verification Required</h1>
+                <p>Hi ${firstName},</p>
+                <br/>
+                <p>Thank you for signing up for <a href="https://gigtree.isdev.co">GigTree</a>! Please verify your email address by clicking the link below:</p>
+                <a href="${verificationLink}">Verify Email</a>
+                <p>This link will expire in 24 hours.</p>
+            `;
+
+            // Send the email
+            try {
+                await sendEmail(email,
+                    "GigTree - Verify Your Email Address",
+                    "Please verify your email address by clicking the link below.",
+                    emailContent
+                );
+            } catch (error) {
+                logger.error(`Failed to send email verification to ${email}: ${(error as Error).message || "Unknown Error"}`, { error });
+
+                // If email sending fails, we still create the user but mark email verification as failed
+                user.emailVerification = {
+                    ...emailVerification,
+                    isPending: false,
+                    sendDate: new Date(),
+                    expiresAt: new Date(Date.now() - 1000) // Set to past date to indicate failure
+                };
+                await user.save();
+            }
+        }
 
         // Logging
         logger.success(`New user created: ${user.userId} (${user.primaryEmail})`, { firstName, lastName, email, emailVerification });
