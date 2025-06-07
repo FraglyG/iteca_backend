@@ -31,7 +31,7 @@ new Route("GET:/api/listings/get").expectQuery(querySchema).onCall(async (req, r
     try {
         const { page, limit, sort, sortBy, search, category } = req.body as z.infer<typeof querySchema>;
 
-        logger.info(`Fetching listings according to: ${JSON.stringify({ page, limit, sort, sortBy, search, category })}`);
+        logger.debug(`Fetching listings according to: ${JSON.stringify({ page, limit, sort, sortBy, search, category })}`);
 
         const query: any = {};
 
@@ -76,7 +76,7 @@ new Route("GET:/api/listings/get").expectQuery(querySchema).onCall(async (req, r
         const hasNextPage = page < totalPages;
         const hasPrevPage = page > 1;
 
-        logger.info(`Retrieved ${listings.length} listings with user data`);
+        logger.debug(`Retrieved ${listings.length} listings with user data`);
 
         // Return the response
         res.json({
