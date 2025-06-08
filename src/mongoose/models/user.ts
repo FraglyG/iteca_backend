@@ -135,6 +135,11 @@ userSchema.index({ userId: 1 }, { unique: true });
 userSchema.index({ primaryEmail: 1 }, { unique: true, sparse: true });
 userSchema.index({ username: 1 }, { unique: true, sparse: true });
 
+// Moderation indexes for auto-unban performance
+userSchema.index({ 'moderation.ban.isBanned': 1, 'moderation.ban.unbannedAt': 1 });
+userSchema.index({ 'moderation.muted.isMuted': 1, 'moderation.muted.unmutedAt': 1 });
+userSchema.index({ 'moderation.jobListingBan.isBanned': 1, 'moderation.jobListingBan.unbannedAt': 1 });
+
 // CREATE MODEL
 export const userModel = model<UserInterface>('User', userSchema);
 export default userModel;

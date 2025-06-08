@@ -45,11 +45,10 @@ new Route("POST:/api/authv1/login").expectBody(loginBodySchema).onCall(async (re
         if (!user) return res.status(401).json({ success: false, error: "Invalid Credentials", message: "Invalid username/email or password." });
 
         // Verify password
-        const isValidPassword = await verifyPassword(password, user.passwordHash);
-        if (!isValidPassword) return res.status(401).json({ success: false, error: "Invalid Credentials", message: "Invalid username/email or password." });
+        const isValidPassword = await verifyPassword(password, user.passwordHash); if (!isValidPassword) return res.status(401).json({ success: false, error: "Invalid Credentials", message: "Invalid username/email or password." });
 
-        // Check if banned
-        if (user.moderation?.ban?.isBanned) {
+        // Check if banned (and not expired)
+        if (user.moderation?.ban?.isBanned && (!user.moderation.ban.unbannedAt || new Date(user.moderation.ban.unbannedAt) > new Date())) {
             return res.status(403).json({
                 success: false,
                 error: "Forbidden",

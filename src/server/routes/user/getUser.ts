@@ -7,11 +7,11 @@ import CONFIG from "../../../util/config";
 
 const logger = getLogger("ROUTE.GET_USER");
 
-new Route("GET:/api/user/from/jwt").auth({ type: "JWT", config: { getFullUser: true } }).onCall(async (req, res) => {
-    const user = req.user as UserInterface;
+new Route("GET:/api/user/from/jwt").auth({ type: "JWT", config: { getFullUser: true } }).onCall(async (req, res) => {    const user = req.user as UserInterface;
 
-    // Check if banned
-    if (user.moderation?.ban?.isBanned) {
+    // Check if banned (and not expired)
+    if (user.moderation?.ban?.isBanned && 
+        (!user.moderation.ban.unbannedAt || new Date(user.moderation.ban.unbannedAt) > new Date())) {
         return res.status(403).json({
             success: false,
             error: "Forbidden",

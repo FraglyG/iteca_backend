@@ -2,3 +2,4 @@
 
 import "../server/server";
 import "../mongoose/database";
+import "../server/auth/moderation";

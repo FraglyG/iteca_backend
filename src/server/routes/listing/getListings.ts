@@ -52,19 +52,27 @@ new Route("GET:/api/listings/get").expectQuery(querySchema).onCall(async (req, r
         const [listings, totalCount] = await Promise.all([
             listingModel.find(query).sort(sortObj).skip(skip).limit(limit).lean(),
             listingModel.countDocuments(query)
-        ]);
-
-        const userIds = [...new Set(listings.map(listing => listing.ownerUserId))];
+        ]); const userIds = [...new Set(listings.map(listing => listing.ownerUserId))];
         const users = await userModel.find(
             { userId: { $in: userIds } },
             { passwordHash: 0, emailVerification: 0, primaryEmail: 0 } // Exclude sensitive fields
         ).lean();
         const userMap = new Map(users.map(user => [user.userId, user]));
 
-        // Remove listings where owner is listing-banned
+        // Remove listings where owner is listing-banned or banned (and not expired)
+        const now = new Date();
         const listingsWithUsers = listings
             .map(listing => ({ ...listing, owner: userMap.get(listing.ownerUserId) || null }))
-            .filter(listing => !(listing.owner && listing.owner.moderation?.jobListingBan?.isBanned));
+            .filter(listing => {
+                if (!listing.owner) return true;
+                const mod = listing.owner.moderation;
+
+                // Check for banned and not expired
+                const isBanned = mod?.ban?.isBanned && (!mod.ban.unbannedAt || new Date(mod.ban.unbannedAt) > now);
+                const isJobListingBanned = mod?.jobListingBan?.isBanned && (!mod.jobListingBan.unbannedAt || new Date(mod.jobListingBan.unbannedAt) > now);
+
+                return !(isBanned || isJobListingBanned);
+            });
 
         // Pagination meta
         const filteredTotalCount = listingsWithUsers.length;

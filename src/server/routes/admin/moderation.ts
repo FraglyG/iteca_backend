@@ -2,6 +2,7 @@ import { z } from "zod";
 import { Route } from "../../package";
 import { userModel } from "../../../mongoose";
 import { getLogger } from "../../../util/logger";
+import { moderationService } from "../../auth/moderation";
 
 const logger = getLogger("ADMIN.MODERATION");
 
@@ -615,6 +616,60 @@ new Route("GET:/api/admin/moderation/job-listing-banned").auth({ type: "JWT" }).
             success: false,
             error: "Internal Server Error",
             message: "Failed to fetch job listing banned users"
+        });
+    }
+});
+
+// Manual trigger for auto-unban processing
+new Route("POST:/api/admin/moderation/process-expired").auth({ type: "JWT" }).requireAdmin().onCall(async (req, res) => {
+    try {
+        logger.info("Admin manually triggered expired moderation processing");
+        
+        // Process expired bans
+        const statsBefore = await moderationService.getExpirationStats();
+        await moderationService.processAllExpired();
+        const statsAfter = await moderationService.getExpirationStats();
+        
+        res.json({
+            success: true,
+            message: "Expired moderation actions processed successfully",
+            processed: {
+                bans: statsBefore.expiredBans - statsAfter.expiredBans,
+                mutes: statsBefore.expiredMutes - statsAfter.expiredMutes,
+                jobListingBans: statsBefore.expiredJobListingBans - statsAfter.expiredJobListingBans
+            },
+            remaining: statsAfter
+        });
+    } catch (error) {
+        logger.error("Error processing expired moderation actions:", error);
+        res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "Failed to process expired moderation actions"
+        });
+    }
+});
+
+// Get expiration statistics
+new Route("GET:/api/admin/moderation/expiration-stats").auth({ type: "JWT" }).requireAdmin().onCall(async (req, res) => {
+    try {
+        const stats = await moderationService.getExpirationStats();
+        
+        res.json({
+            success: true,
+            stats: {
+                expiredBans: stats.expiredBans,
+                expiredMutes: stats.expiredMutes,
+                expiredJobListingBans: stats.expiredJobListingBans,
+                totalExpired: stats.expiredBans + stats.expiredMutes + stats.expiredJobListingBans
+            }
+        });
+    } catch (error) {
+        logger.error("Error fetching expiration statistics:", error);
+        res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "Failed to fetch expiration statistics"
         });
     }
 });
