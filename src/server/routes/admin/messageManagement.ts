@@ -42,7 +42,7 @@ new Route("GET:/api/admin/channels").auth({ type: "JWT" }).requireAdmin().expect
         // Get message counts for each channel
         const channelIds = channels.map(channel => channel.channelId);
         const messageCounts = await Promise.all(
-            channelIds.map(channelId => 
+            channelIds.map(channelId =>
                 messageModel.countDocuments({ channelId }).then(count => ({ channelId, count }))
             )
         );
@@ -208,13 +208,82 @@ new Route("POST:/api/admin/messages/search").auth({ type: "JWT" }).requireAdmin(
     try {
         const { query, page, limit, sort } = req.body as z.infer<typeof searchMessagesSchema>;
 
-        // Calculate pagination
         const skip = (page - 1) * limit;
+        const searchQuery = { content: { $regex: query, $options: 'i' } };
 
-        // Search messages
-        const searchQuery = {
-            content: { $regex: query, $options: 'i' }
-        };
+        const [messages, totalCount] = await Promise.all([
+            messageModel.find(searchQuery)
+                .sort({ createdAt: sort === "asc" ? 1 : -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            messageModel.countDocuments(searchQuery)
+        ]);
+
+        // Get user data for message senders
+        const senderIds = [...new Set(messages.map(message => message.senderUserId))];
+        const users = await userModel.find(
+            { userId: { $in: senderIds } },
+            { userId: 1, username: 1, 'profile.firstName': 1, 'profile.lastName': 1 }
+        ).lean();
+
+        const userMap = new Map(users.map(user => [user.userId, user]));
+
+        // Get channel data
+        const channelIds = [...new Set(messages.map(message => message.channelId))];
+        const channels = await channelModel.find(
+            { channelId: { $in: channelIds } },
+            { channelId: 1, ownerUserIds: 1 }
+        ).lean();
+
+        const channelMap = new Map(channels.map(channel => [channel.channelId, channel]));
+
+        // Combine messages with user and channel data
+        const messagesWithData = messages.map(message => ({
+            ...message,
+            sender: userMap.get(message.senderUserId) || null,
+            channel: channelMap.get(message.channelId) || null
+        }));
+
+        const totalPages = Math.ceil(totalCount / limit);
+
+        res.json({
+            success: true,
+            messages: messagesWithData,
+            searchQuery: query,
+            pagination: {
+                page,
+                limit,
+                totalCount,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
+        });
+    } catch (error) {
+        logger.error("Error searching messages:", error);
+        res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "Failed to search messages"
+        });
+    }
+});
+
+// Search messages across all channels (GET version as documented)
+const searchMessagesQuerySchema = z.object({
+    query: z.string().min(1),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+    sort: z.enum(["asc", "desc"]).default("desc"),
+});
+
+new Route("GET:/api/admin/messages/search").auth({ type: "JWT" }).requireAdmin().expectQuery(searchMessagesQuerySchema).onCall(async (req, res) => {
+    try {
+        const { query, page, limit, sort } = req.body as z.infer<typeof searchMessagesQuerySchema>;
+
+        const skip = (page - 1) * limit;
+        const searchQuery = { content: { $regex: query, $options: 'i' } };
 
         const [messages, totalCount] = await Promise.all([
             messageModel.find(searchQuery)
@@ -292,7 +361,7 @@ new Route("POST:/api/admin/messages/user").auth({ type: "JWT" }).requireAdmin().
             { userId },
             { userId: 1, username: 1, 'profile.firstName': 1, 'profile.lastName': 1 }
         ).lean();
-        
+
         if (!user) {
             return res.status(404).json({
                 success: false,
@@ -301,7 +370,6 @@ new Route("POST:/api/admin/messages/user").auth({ type: "JWT" }).requireAdmin().
             });
         }
 
-        // Calculate pagination
         const skip = (page - 1) * limit;
 
         // Fetch user's messages and total count
@@ -350,6 +418,78 @@ new Route("POST:/api/admin/messages/user").auth({ type: "JWT" }).requireAdmin().
             success: false,
             error: "Internal Server Error",
             message: "Failed to fetch user messages"
+        });
+    }
+});
+
+// Get all messages by all users across all channels
+const getAllMessagesSchema = z.object({
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(50),
+    sort: z.enum(["asc", "desc"]).default("desc"),
+});
+
+new Route("GET:/api/admin/messages").auth({ type: "JWT" }).requireAdmin().expectQuery(getAllMessagesSchema).onCall(async (req, res) => {
+    try {
+        const { page, limit, sort } = req.body as z.infer<typeof getAllMessagesSchema>;
+
+        const skip = (page - 1) * limit;
+
+        // Fetch all messages and total count
+        const [messages, totalCount] = await Promise.all([
+            messageModel.find({})
+                .sort({ createdAt: sort === "asc" ? 1 : -1 })
+                .skip(skip)
+                .limit(limit)
+                .lean(),
+            messageModel.countDocuments({})
+        ]);
+
+        // Get user data for message senders
+        const senderIds = [...new Set(messages.map(message => message.senderUserId))];
+        const users = await userModel.find(
+            { userId: { $in: senderIds } },
+            { userId: 1, username: 1, 'profile.firstName': 1, 'profile.lastName': 1 }
+        ).lean();
+
+        const userMap = new Map(users.map(user => [user.userId, user]));
+
+        // Get channel data
+        const channelIds = [...new Set(messages.map(message => message.channelId))];
+        const channels = await channelModel.find(
+            { channelId: { $in: channelIds } },
+            { channelId: 1, ownerUserIds: 1 }
+        ).lean();
+
+        const channelMap = new Map(channels.map(channel => [channel.channelId, channel]));
+
+        // Combine messages with user and channel data
+        const messagesWithData = messages.map(message => ({
+            ...message,
+            sender: userMap.get(message.senderUserId) || null,
+            channel: channelMap.get(message.channelId) || null
+        }));
+
+        const totalPages = Math.ceil(totalCount / limit);
+
+        res.json({
+            success: true,
+            messages: messagesWithData,
+            pagination: {
+                page,
+                limit,
+                totalCount,
+                totalPages,
+                hasNextPage: page < totalPages,
+                hasPrevPage: page > 1
+            }
+        });
+    } catch (error) {
+        logger.error("Error fetching all messages:", error);
+        res.status(500).json({
+            success: false,
+            error: "Internal Server Error",
+            message: "Failed to fetch all messages"
         });
     }
 });

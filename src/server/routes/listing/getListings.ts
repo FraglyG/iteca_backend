@@ -34,49 +34,45 @@ new Route("GET:/api/listings/get").expectQuery(querySchema).onCall(async (req, r
         logger.debug(`Fetching listings according to: ${JSON.stringify({ page, limit, sort, sortBy, search, category })}`);
 
         const query: any = {};
-
         if (search) query.$or = [{ shortDescription: { $regex: search, $options: 'i' } }];
 
-        if (category) {
-            // TODO: Implement the category field later
-            query.category = category;
-        }
+        // if (category) {
+        //     // TODO: Implement the category field later
+        //     // Update: I never got time to implement this lmao
+        //     query.category = category;
+        // }
 
-        // Calculate pagination
         const skip = (page - 1) * limit;
 
         // Build sort object
         const sortObj: any = {};
-        sortObj[sortBy] = sort === "asc" ? 1 : -1;        // Fetch listings
+        sortObj[sortBy] = sort === "asc" ? 1 : -1;
+
+        // Fetch listings and total count
         const [listings, totalCount] = await Promise.all([
             listingModel.find(query).sort(sortObj).skip(skip).limit(limit).lean(),
             listingModel.countDocuments(query)
         ]);
 
-        // Get unique user IDs from listings
         const userIds = [...new Set(listings.map(listing => listing.ownerUserId))];
-
-        // Fetch user data for all unique user IDs
         const users = await userModel.find(
             { userId: { $in: userIds } },
             { passwordHash: 0, emailVerification: 0, primaryEmail: 0 } // Exclude sensitive fields
         ).lean();
-
-        // Create a map for quick user lookup
         const userMap = new Map(users.map(user => [user.userId, user]));
 
-        // Combine listings with user data
-        const listingsWithUsers = listings.map(listing => ({
-            ...listing,
-            owner: userMap.get(listing.ownerUserId) || null
-        }));
+        // Remove listings where owner is listing-banned
+        const listingsWithUsers = listings
+            .map(listing => ({ ...listing, owner: userMap.get(listing.ownerUserId) || null }))
+            .filter(listing => !(listing.owner && listing.owner.moderation?.jobListingBan?.isBanned));
 
-        // Calculate pagination metadata
-        const totalPages = Math.ceil(totalCount / limit);
+        // Pagination meta
+        const filteredTotalCount = listingsWithUsers.length;
+        const totalPages = Math.ceil(filteredTotalCount / limit);
         const hasNextPage = page < totalPages;
         const hasPrevPage = page > 1;
 
-        logger.debug(`Retrieved ${listings.length} listings with user data`);
+        logger.debug(`Retrieved ${listingsWithUsers.length} listings with user data`);
 
         // Return the response
         res.json({
@@ -86,7 +82,7 @@ new Route("GET:/api/listings/get").expectQuery(querySchema).onCall(async (req, r
                 pagination: {
                     currentPage: page,
                     totalPages,
-                    totalCount,
+                    totalCount: filteredTotalCount,
                     hasNextPage,
                     hasPrevPage,
                     limit

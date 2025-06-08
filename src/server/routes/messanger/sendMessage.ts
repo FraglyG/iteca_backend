@@ -26,6 +26,11 @@ new Route("POST:/api/message/send").auth({ type: "JWT", config: { getFullUser: t
     const { content, channelId, targetUserId } = req.body as z.infer<typeof messageBodySchema>;
     if (!channelId && !targetUserId) return res.status(400).json({ success: false, error: "Invalid Request", message: "Either channelId or targetUserId must be provided." });
 
+    // Can't send mesage if muted
+    if (user.moderation?.muted?.isMuted) {
+        return res.status(403).json({ success: false, error: "Forbidden", message: "You are currently muted and cannot send messages." });
+    }
+
     // Find Channel
     const channelSearchResult = await findChannelByEitherChannelIdOrTargetId({ user, channelId, targetUserId });
     if (!channelSearchResult.success) return res.json(channelSearchResult);    // Create message 
@@ -34,8 +39,8 @@ new Route("POST:/api/message/send").auth({ type: "JWT", config: { getFullUser: t
             channelId: channelSearchResult.channelId,
             senderUserId: user.userId,
             content: content.trim(),
-        });        
-        
+        });
+
         // Update subscriptions
         broadcastMessageToChannel(channelSearchResult.channelId, {
             messageId: newMessage.messageId,

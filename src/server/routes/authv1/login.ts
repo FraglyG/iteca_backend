@@ -30,15 +30,9 @@ const loginBodySchema = z.object({
 new Route("POST:/api/authv1/login").expectBody(loginBodySchema).onCall(async (req, res) => {
     const { identifier, password } = req.body as z.infer<typeof loginBodySchema>;
 
-    // Check if login is enabled
-    if (!CONFIG.login?.enabled) {
-        return res.status(403).json({ success: false, error: "Login Disabled", message: "Login is currently disabled on this server." });
-    }
-
-    // Validate that identifier is provided
-    if (!identifier) {
-        return res.status(400).json({ success: false, error: "Missing Credentials", message: "Username or email must be provided." });
-    }
+    // Quick checks
+    if (!CONFIG.login?.enabled) return res.status(403).json({ success: false, error: "Login Disabled", message: "Login is currently disabled on this server." });
+    if (!identifier) return res.status(400).json({ success: false, error: "Missing Credentials", message: "Username or email must be provided." });
 
     try {
         // Automatically detect if identifier is email or username
@@ -54,7 +48,18 @@ new Route("POST:/api/authv1/login").expectBody(loginBodySchema).onCall(async (re
         const isValidPassword = await verifyPassword(password, user.passwordHash);
         if (!isValidPassword) return res.status(401).json({ success: false, error: "Invalid Credentials", message: "Invalid username/email or password." });
 
-        // Check if email verification is required and user is not verified
+        // Check if banned
+        if (user.moderation?.ban?.isBanned) {
+            return res.status(403).json({
+                success: false,
+                error: "Forbidden",
+                message: "Login failed because your account was banned for: "
+                    + `\n\n${(user.moderation.ban.banReason || "An unspecified reason.")}`
+                    + `\n\n${user.moderation.ban.unbannedAt ? `You'll be unbanned at ${new Date(user.moderation.ban.unbannedAt).toLocaleString()}` : "This ban is permanent."}`,
+            });
+        }
+
+        // Check if verified
         if (CONFIG.signUp?.requireEmailVerification && !user.emailVerified) {
             return res.status(403).json({
                 success: false,

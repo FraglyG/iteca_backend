@@ -1,14 +1,29 @@
 import { z } from "zod";
 import { getLogger } from "../../../util/logger";
 import { Route } from "../../package";
-import { access } from "fs";
 import { validateJWT } from "../../auth/util";
-import { userModel } from "../../../mongoose";
+import { UserInterface, userModel } from "../../../mongoose";
+import CONFIG from "../../../util/config";
 
 const logger = getLogger("ROUTE.GET_USER");
 
 new Route("GET:/api/user/from/jwt").auth({ type: "JWT", config: { getFullUser: true } }).onCall(async (req, res) => {
-    res.json(req.user);
+    const user = req.user as UserInterface;
+
+    // Check if banned
+    if (user.moderation?.ban?.isBanned) {
+        return res.status(403).json({
+            success: false,
+            error: "Forbidden",
+            message: "You are banned from using this service. Reason:"
+                + `\n\n${(user.moderation.ban.banReason || "An unspecified reason.")}`
+                + `\n\n${user.moderation.ban.unbannedAt ? `You'll be unbanned at ${new Date(user.moderation.ban.unbannedAt).toLocaleString()}` : "This ban is permanent."}`,
+        });
+    }
+
+    // Return user
+    if (CONFIG.moderation.adminUserIds.includes(user.userId)) user.isAdmin = true;
+    res.json(user);
 });
 
 const userFromJwtRawSchema = z.object({
@@ -31,6 +46,9 @@ new Route("GET:/api/user/from/jwt/raw").expectQuery(userFromJwtRawSchema).onCall
         return res.status(404).json({ success: false, error: "Not Found", message: "User not found." });
     }
 
+    // inject isAdmin based on CONFIG
+    if (CONFIG.moderation.adminUserIds.includes(user.userId)) user.isAdmin = true;
+
     res.json({ success: true, tokenPayload: payload, user: user.toObject() });
 });
 
@@ -49,6 +67,9 @@ new Route("GET:/api/public/user").expectQuery(userFromIdSchema).onCall(async (re
         "emailVerification": 0,
     }).lean();
     if (!user) return res.status(404).json({ success: false, error: "Not Found", message: "User not found." });
+
+    // inject isAdmin based on CONFIG
+    if (CONFIG.moderation.adminUserIds.includes(user.userId)) user.isAdmin = true;
 
     // Return user data
     res.json({ success: true, user });

@@ -12,6 +12,9 @@ export interface UserInterface {
     /** User's primary configured email, may not be configured depending on server-configuration */
     primaryEmail?: string;
 
+    /** Whether this user is an admin */
+    isAdmin?: boolean,
+
     /** Whether this user's email has been verified */
     emailVerified?: boolean,
     /** Related to user's email verification */
@@ -83,6 +86,7 @@ const userSchema = new Schema<UserInterface>({
     userId: { type: String, default: () => getKey("user") },
     username: { type: String },
     passwordHash: { type: String, required: true },
+    isAdmin: { type: Boolean, default: false },
 
     primaryEmail: { type: String },
 
@@ -92,7 +96,9 @@ const userSchema = new Schema<UserInterface>({
         verificationCode: { type: String },
         sentDate: { type: Date },
         expiresAt: { type: Date },
-    },    profile: {
+    },
+
+    profile: {
         type: {
             bio: { type: String },
             profilePicture: { type: String },
