@@ -4,6 +4,7 @@ import { app } from "./server";
 import { validateJWTRequest } from "./auth/util";
 import { userModel } from "../mongoose";
 import { z, ZodSchema, ZodError } from "zod";
+import CONFIG from "../util/config";
 
 // INIT
 const logger = getLogger("ROUTE.PACK");
@@ -102,6 +103,28 @@ export class Route {
             }
 
             return next();
+        });
+        return this;
+    }
+
+    requireAdmin() {
+        logger.debug(`Admin privileges required for route ${this.route}`);
+
+        this.middleware.push((req, res, next) => {
+            const user = req.user as { userId: string } | null;
+            if (!user) {
+                logger.warn("Admin middleware called without user authentication");
+                return res.status(401).json({ success: false, error: "Unauthorized", message: "Authentication required" });
+            }
+
+            // Check if user is in the admin list
+            if (!CONFIG.moderation.adminUserIds.includes(user.userId)) {
+                logger.warn(`Non-admin user ${user.userId} attempted to access admin endpoint`);
+                return res.status(403).json({ success: false, error: "Forbidden", message: "Admin privileges required" });
+            }
+
+            logger.debug(`Admin user ${user.userId} accessing admin endpoint`);
+            next();
         });
         return this;
     }

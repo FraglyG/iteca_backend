@@ -61,6 +61,11 @@ export const CONFIG = {
         smtpPassword: process.env.SMTP_PASSWORD,
     },
 
+    /** Configuration relating to user moderation */
+    moderation: {
+        adminUserIds: (process.env.ADMIN_USER_IDS || '').split(',').map(id => id.trim()).filter(id => id.length > 0),
+    },
+
     /** Configuration relating to the login process */
     login: {
         /** Whether login is enabled (Default: true) */
