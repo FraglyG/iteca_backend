@@ -101,13 +101,13 @@ new Route("POST:/api/admin/users/get").auth({ type: "JWT" }).requireAdmin().expe
 // Update user details
 const updateUserSchema = z.object({
     userId: z.string().min(1),
-    username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/).optional().transform(val => val === "" ? null : val),
-    primaryEmail: z.string().email().optional().transform(val => val === "" ? null : val),
+    username: z.string().min(3).max(20).regex(/^[a-zA-Z0-9_]+$/).optional(),
+    primaryEmail: z.string().email().optional(),
     emailVerified: z.boolean().optional(),
     profile: z.object({
-        bio: z.string().max(500).optional().transform(val => val === "" ? null : val),
-        firstName: z.string().min(1).max(50).optional().transform(val => val === "" ? null : val),
-        lastName: z.string().min(1).max(50).optional().transform(val => val === "" ? null : val),
+        bio: z.string().max(500).optional(),
+        firstName: z.string().min(1).max(50).optional(),
+        lastName: z.string().min(1).max(50).optional(),
         profilePicture: z.string().url().nullable().optional().transform(val => val === "" ? null : val),
     }).optional(),
 });
