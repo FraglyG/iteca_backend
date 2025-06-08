@@ -21,3 +21,5 @@ import "./routes/messanger/fetchMessages";
 import "./routes/messanger/sendMessage";
 import "./routes/messanger/fetchChannels";
 import "./routes/messanger/createChannel";
+import "./routes/messanger/subscribeChannel";
+import "./routes/messanger/channelStats";

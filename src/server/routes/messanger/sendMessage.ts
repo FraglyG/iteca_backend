@@ -4,6 +4,7 @@ import { Route } from "../../package";
 import channelModel from "../../../mongoose/models/channel";
 import messageModel from "../../../mongoose/models/message";
 import { findChannelByEitherChannelIdOrTargetId } from "./messageUtility";
+import { broadcastMessageToChannel } from "./subscribeChannel";
 
 const messageBodySchema = z.object({
     content: z.string()
@@ -27,15 +28,24 @@ new Route("POST:/api/message/send").auth({ type: "JWT", config: { getFullUser: t
 
     // Find Channel
     const channelSearchResult = await findChannelByEitherChannelIdOrTargetId({ user, channelId, targetUserId });
-    if (!channelSearchResult.success) return res.json(channelSearchResult);
-
-    // Create message 
+    if (!channelSearchResult.success) return res.json(channelSearchResult);    // Create message 
     try {
         const newMessage = await messageModel.create({
             channelId: channelSearchResult.channelId,
             senderUserId: user.userId,
             content: content.trim(),
+        });        
+        
+        // Update subscriptions
+        broadcastMessageToChannel(channelSearchResult.channelId, {
+            messageId: newMessage.messageId,
+            channelId: newMessage.channelId,
+            senderUserId: newMessage.senderUserId,
+            content: newMessage.content,
+            createdAt: (newMessage as any).createdAt,
+            updatedAt: (newMessage as any).updatedAt
         });
+
         return res.status(201).json({ success: true, message: "Message sent successfully.", data: newMessage });
     } catch (error) {
         return res.status(500).json({ success: false, error: "Internal Server Error", message: "Failed to send message." });
