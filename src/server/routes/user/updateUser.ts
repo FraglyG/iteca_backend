@@ -17,7 +17,7 @@ const updateUserSchema = z.object({
             .min(1, "Last name is required").max(50, "Last name must be at most 50 characters long")
             .regex(/^[a-zA-Z0-9_]+$/, "Last name can only contain alphanumeric characters and underscores")
             .optional(),
-        profilePicture: z.string().url().optional(),
+        profilePicture: z.string().url().nullable().optional(),
     }).optional(),
 });
 
@@ -41,7 +41,10 @@ new Route("POST:/api/user/update").auth({ type: "JWT", config: { getFullUser: fa
         if (profile.bio !== undefined) user.profile.bio = profile.bio;
         if (profile.firstName) user.profile.firstName = profile.firstName.trim();
         if (profile.lastName) user.profile.lastName = profile.lastName.trim();
+
         if (profile.profilePicture) user.profile.profilePicture = profile.profilePicture;
+        if (profile.profilePicture === null) user.profile.profilePicture = undefined;
+        
         user.markModified('profile');
     }
 
