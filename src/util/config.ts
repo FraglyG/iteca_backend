@@ -39,8 +39,8 @@ export const CONFIG = {
         enabled: process.env.SIGN_UP_ENABLED !== 'false',
         /** Whether email is required for sign-up (Default: true) */
         requireEmail: process.env.SIGNUP_REQUIRE_EMAIL !== 'false',
-        /** Whether email verification is required for sign-up (Default: true) */
-        requireEmailVerification: process.env.SIGNUP_REQUIRE_EMAIL_VERIFICATION !== 'false',
+        /** Whether email verification is required for sign-up (Default: false) */
+        requireEmailVerification: process.env.SIGNUP_REQUIRE_EMAIL_VERIFICATION === 'true',
     },
 
     /** Configuration in regards to emails */

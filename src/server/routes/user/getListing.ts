@@ -9,6 +9,10 @@ const logger = getLogger("ROUTE.GET_USER_LISTING");
 
 new Route("GET:/api/user/listing").auth({ type: "JWT" }).onCall(async (req, res) => {
     const userPayload = req.user as TokenPayload;
+    if (!userPayload) {
+        logger.error("User payload not found in request");
+        return res.status(401).json({ success: false, error: "Unauthorized", message: "User not authenticated" });
+    }
 
     // Find listing
     const userListing = await listingModel.findOne({ ownerUserId: userPayload.userId });
