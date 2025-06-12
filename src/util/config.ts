@@ -30,7 +30,7 @@ export const CONFIG = {
         /** Backend URI (this server's URI) */
         backendUri: process.env.BACKEND_URI || `http://${process.env.BASE_DOMAIN || 'localhost'}:${process.env.PORT || 3000}`,
         /** Frontend URI */
-        frontendUri: process.env.FRONTEND_URI || `https://example.com`,
+        frontendUri: process.env.FRONTEND_URI || `http://localhost:3001`,
     },
 
     /** Configuration relating to the sign-up process */
