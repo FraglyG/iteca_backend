@@ -26,8 +26,6 @@ const querySchema = z.object({
 });
 
 new Route("GET:/api/listings/get").expectQuery(querySchema).onCall(async (req, res) => {
-    const userPayload = req.user as TokenPayload;
-
     try {
         const { page, limit, sort, sortBy, search, category } = req.body as z.infer<typeof querySchema>;
 
@@ -99,7 +97,7 @@ new Route("GET:/api/listings/get").expectQuery(querySchema).onCall(async (req, r
         });
 
     } catch (error) {
-        logger.error(`Error fetching listings for user ${userPayload.userId}:`, error);
+        logger.error(`Error fetching listings for user:`, error);
         res.status(500).json({
             success: false,
             error: "Internal Server Error",

@@ -20,12 +20,14 @@ new Initializer("MONGODB", async () => {
         // Use in-memory MongoDB for testing or development
         const mongod = await MongoMemoryServer.create();
         connectionString = mongod.getUri();
-
-        return true
     }
 
     // connect to db
-    if (!connectionString) return false;
+    if (!connectionString) {
+        wlogger.error("No MongoDB connection URL provided, cannot connect to database");
+        return false;
+    }
+
     try {
         mongoose.set('strictQuery', true)
         await mongoose.connect(connectionString)
